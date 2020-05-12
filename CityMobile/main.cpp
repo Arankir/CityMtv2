@@ -3,6 +3,13 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QtSql>
+void SmashData(QString a_data, int *a_sideAdress, int *a_nozzle, int *a_trkFuelCode, int *a_trkVCode){
+    int data=a_data.toInt();
+    *a_sideAdress=data/100000; data%=100000;
+    *a_nozzle=data/10000; data%=10000;
+    *a_trkFuelCode=data/1000; data%=1000;
+    *a_trkVCode=data;
+}
 
 void GetColumnsFuelsData(QJsonArray *a_fuels, QJsonObject *a_columns, QSqlDatabase a_db, QString a_vCodeAgzs){
     bool FuelsInc[13]={0,0,0,0,0,0,0,0,0,0,0,0,0};
