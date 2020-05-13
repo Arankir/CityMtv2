@@ -111,11 +111,10 @@ void MoneyData(QJsonObject a_data, int *a_requestTotalPriceDB, int *a_requestVol
     }
 }
 QString GetSmena(QSqlDatabase a_db){
-    QSqlQuery *qAGZS_Transaction = new QSqlQuery(a_db);
-    qAGZS_Transaction->exec("SELECT top 1 CDate, VCode, Smena FROM [agzs].[dbo].[ADAST_TRKTransaction] order by CDate desc");
-    qAGZS_Transaction->next();
-    QDateTime trans=QDateTime::fromString(qAGZS_Transaction->value(0).toString(),"yyyy-MM-dd hh:mm:ss.zzz");
-    return QDateTime::currentDateTime().date()>trans.date()?QString::number(qAGZS_Transaction->value(2).toInt()+1):QString::number(qAGZS_Transaction->value(2).toInt());
+    QSqlQuery *q_Smena = new QSqlQuery(a_db);
+    q_Smena->exec("SELECT top 1 VCode FROM [agzs_test].[dbo].[ARM_Smena] order by cdate desc");
+    q_Smena->next();
+    return q_Smena->value(0).toString();
 }
 void InsertNewRequest(QString a_api_key, QJsonObject a_request, QSqlDatabase a_db){
 //            {
@@ -231,6 +230,7 @@ void InsertNewRequest(QString a_api_key, QJsonObject a_request, QSqlDatabase a_d
         q_Transaction->bindValue(":Propan",0);
         q_Transaction->exec();
         delete q_Transaction;
+        CityMobileAPI::SetRequestStateAccept(a_api_key,a_request.value("Id").toString());
     }
     QSqlQuery *q_APIRequests = new QSqlQuery(a_db);
     q_APIRequests->prepare("INSERT INTO [agzs].[dbo].[PR_APITransaction] ([AGZSName],[AGZS],[CDate],[VCode],[APIID],[APIStationExtendedId],[APIColumnId],[APIFuelId],[FuelId],"
@@ -261,8 +261,10 @@ void InsertNewRequest(QString a_api_key, QJsonObject a_request, QSqlDatabase a_d
     q_APIRequests->exec();
 }
 
-void VerifyRequests(){
-
+void VerifyRequests(QString a_api_key, QSqlDatabase a_db){
+    //AdditionalTransVCode = VCode другой записи - идет заправка
+    //если там статус 'Выдача', iState=4, (LitersCountBeforeDB, MoneyCountBeforeDB, TransCountBefore)!=0, Transnum!='' - наливают
+    //если заполнено все и статус 'Завершение выдачи' - заправили
 }
 
 void GetColumnsFuelsData(QJsonArray *a_fuels, QJsonObject *a_columns, QSqlDatabase a_db, QString a_vCodeAgzs){
