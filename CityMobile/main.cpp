@@ -43,6 +43,14 @@ QString GetFullFuelName(QSqlDatabase a_db, int a_fuelID){
     delete q_Fuels;
     return fullName;
 }
+int GetCashBoxIndex(QSqlDatabase a_db){
+    QSqlQuery *q_CashBox = new QSqlQuery(a_db);
+    q_CashBox->exec("SELECT TOP 1 CashBoxIndex, PayIndex, PayWay, AutoCheck FROM [agzs].[dbo].[ARM_CashBoxesSemaphor] where PayIndex=10 and PayWay='СИТИМОБИЛ' and AutoCheck=0 order by CDate");
+    q_CashBox->next();
+    int last=q_CashBox->value(0).toInt();
+    delete q_CashBox;
+    return last;
+}
 int CheckError(QString a_api_key, QSqlDatabase a_db, QString a_stationID, QString a_columnID, QString a_fuelID, QString a_priceFuel, QString a_id, QString a_lastVCode, QDateTime now){
     QSqlQuery *q_Check = new QSqlQuery(a_db);
     q_Check->exec("SELECT c.AGZSName, c.AGZS, d.VCode, d.Id, d.Adress, d.Location_x, d.Location_y, d.ColumnsCount, d.AGZSL, d.AGZSP "
@@ -52,7 +60,8 @@ int CheckError(QString a_api_key, QSqlDatabase a_db, QString a_stationID, QStrin
                 "FROM [agzs].[dbo].PR_AGZSData d INNER JOIN [agzs].[dbo].PR_AGZSColumnsData c ON [agzs].[dbo].PR_AGZSData.VCode = [agzs].[dbo].PR_AGZSColumnsData.Link "
                 "where d.Id='"+a_stationID+"' and c.[TrkVCode]="+QString::number(a_columnID.toInt()/1000)+" and c.SideAdress="+QString::number(a_columnID.toInt()%1000)+" order by CDate desc");
     if(q_Check->size()==0){
-        CityMobileAPI::SetRequestStateCanceled(a_api_key,a_id,"Указанная колонка не найдена.",a_lastVCode,now);
+        CityMobileAPI *api = new CityMobileAPI();
+        api->SetRequestStateCanceled(a_api_key,a_id,"Указанная колонка не найдена.",a_lastVCode,now);
         delete q_Check;
         return 1;
     }
@@ -63,7 +72,8 @@ int CheckError(QString a_api_key, QSqlDatabase a_db, QString a_stationID, QStrin
                 "FROM [agzs].[dbo].PR_AGZSData d INNER JOIN [agzs].[dbo].PR_AGZSColumnsData c ON [agzs].[dbo].PR_AGZSData.VCode = [agzs].[dbo].PR_AGZSColumnsData.Link "
                 "where d.Id='"+a_stationID+"' and d.["+a_fuelID+"]>0 order by CDate desc");
     if(q_Check->size()==0){
-        CityMobileAPI::SetRequestStateCanceled(a_api_key,a_id,"Не обнаружено указанное топливо.",a_lastVCode,now);
+        CityMobileAPI *api = new CityMobileAPI();
+        api->SetRequestStateCanceled(a_api_key,a_id,"Не обнаружено указанное топливо.",a_lastVCode,now);
         delete q_Check;
         return 2;
     }
@@ -74,7 +84,8 @@ int CheckError(QString a_api_key, QSqlDatabase a_db, QString a_stationID, QStrin
                 "FROM [agzs].[dbo].PR_AGZSData d INNER JOIN [agzs].[dbo].PR_AGZSColumnsData c ON [agzs].[dbo].PR_AGZSData.VCode = [agzs].[dbo].PR_AGZSColumnsData.Link "
                 "where d.Id='"+a_stationID+"' and d.["+a_fuelID+"]="+a_priceFuel+" order by CDate desc");
     if(q_Check->size()==0){
-        CityMobileAPI::SetRequestStateCanceled(a_api_key,a_id,"Цена на выбранный вид топлива отличается от фактической цены.",a_lastVCode,now);
+        CityMobileAPI *api = new CityMobileAPI();
+        api->SetRequestStateCanceled(a_api_key,a_id,"Цена на выбранный вид топлива отличается от фактической цены.",a_lastVCode,now);
         delete q_Check;
         return 3;
     }
@@ -199,7 +210,7 @@ void InsertNewRequest(QString a_api_key, QJsonObject a_request, QSqlDatabase a_d
         q_Transaction->bindValue(":TransCountAfter",0);
         q_Transaction->bindValue(":Result","Выдача завершена: 1");
         q_Transaction->bindValue(":DateOpen",now);
-        q_Transaction->bindValue(":DateClose","DEFAULT");
+        q_Transaction->bindValue(":DateClose",now);
         q_Transaction->bindValue(":TemperatureDB",-100);
         q_Transaction->bindValue(":PayOperationVCode",0);
         q_Transaction->bindValue(":PayWay","СИТИМОБИЛ");
@@ -217,7 +228,7 @@ void InsertNewRequest(QString a_api_key, QJsonObject a_request, QSqlDatabase a_d
         q_Transaction->bindValue(":MassDB",0);
         q_Transaction->bindValue(":Smena",GetSmena(a_db));
         q_Transaction->bindValue(":TrkVcode",q_AGZSColumn->value(32).toString());
-        q_Transaction->bindValue(":CapacityVcode",0);
+        q_Transaction->bindValue(":CapacityVcode",GetCashBoxIndex(a_db));
         q_Transaction->bindValue(":PumpPlace",q_AGZSColumn->value(29).toString());
         q_Transaction->bindValue(":MoneyTakenDB",moneyTakenDB);
         q_Transaction->bindValue(":iPayWay",10);
@@ -230,7 +241,8 @@ void InsertNewRequest(QString a_api_key, QJsonObject a_request, QSqlDatabase a_d
         q_Transaction->bindValue(":Propan",0);
         q_Transaction->exec();
         delete q_Transaction;
-        CityMobileAPI::SetRequestStateAccept(a_api_key,a_request.value("Id").toString());
+        CityMobileAPI *api = new CityMobileAPI();
+        api->SetRequestStateAccept(a_api_key,a_request.value("Id").toString());
     }
     QSqlQuery *q_APIRequests = new QSqlQuery(a_db);
     q_APIRequests->prepare("INSERT INTO [agzs].[dbo].[PR_APITransaction] ([AGZSName],[AGZS],[CDate],[VCode],[APIID],[APIStationExtendedId],[APIColumnId],[APIFuelId],[FuelId],"
@@ -252,7 +264,7 @@ void InsertNewRequest(QString a_api_key, QJsonObject a_request, QSqlDatabase a_d
     q_APIRequests->bindValue(":APIStatus",a_request.value("Status").toString());
     q_APIRequests->bindValue(":APIContractId",a_request.value("ContractId").toString());
     q_APIRequests->bindValue(":agent","CityMobile");
-    q_APIRequests->bindValue(":localState",error==0?"Error: "+QString::number(error):"0");
+    q_APIRequests->bindValue(":localState",error!=0?"Error: "+QString::number(error):"0");
     q_APIRequests->bindValue(":Price",0);
     q_APIRequests->bindValue(":Sum",0);
     q_APIRequests->bindValue(":DateOpen",now);
@@ -265,6 +277,80 @@ void VerifyRequests(QString a_api_key, QSqlDatabase a_db){
     //AdditionalTransVCode = VCode другой записи - идет заправка
     //если там статус 'Выдача', iState=4, (LitersCountBeforeDB, MoneyCountBeforeDB, TransCountBefore)!=0, Transnum!='' - наливают
     //если заполнено все и статус 'Завершение выдачи' - заправили
+    QSqlQuery* q_requests = new QSqlQuery(a_db);
+    q_requests->exec("SELECT api.AGZSName, api.AGZS, api.APIID, api.APIColumnId, api.FuelId, api.localState, api.VCode, h.VCode, b.VCode, b.[State], b.iState, b.TrkTotalPriceDB, b.TrkVolumeDb, b.TrkUnitPriceDB, b.DateOpen, b.DateClose "
+             "FROM [agzs].[dbo].[PR_APITransaction] api "
+             "INNER JOIN [agzs].[dbo].[ADAST_TRKTransaction] h ON api.Link = h.VCode "
+             "INNER JOIN [agzs].[dbo].[ADAST_TRKTransaction] b ON h.AditionalTransVCode = b.VCode "
+             "WHERE api.localState in ('0','1','2','3','4','')");
+    while (q_requests->next()) {
+        if(q_requests->value(10).toInt()!=q_requests->value(5).toInt()){
+            QSqlQuery *q_apiUpdate = new QSqlQuery(a_db);
+            switch (q_requests->value(10).toInt()) {
+            case 0:{//Формирование цен   Не сформирована
+
+                break;
+            }
+            case 1:{//Цена установлена
+                q_apiUpdate->prepare("UPDATE [agzs].[dbo].[PR_APITransaction] set localState = :localState, DateClose = :date where VCode = :VCode");
+                q_apiUpdate->bindValue(":localState",q_requests->value(10).toInt());
+                q_apiUpdate->bindValue(":date",q_requests->value(15).toDateTime());
+                q_apiUpdate->bindValue(":VCode",q_requests->value(6).toInt());
+                q_apiUpdate->exec();
+                break;
+            }
+            case 2:{//Запрос счетчиков
+                q_apiUpdate->prepare("UPDATE [agzs].[dbo].[PR_APITransaction] set localState = :localState, DateClose = :date where VCode = :VCode");
+                q_apiUpdate->bindValue(":localState",q_requests->value(10).toInt());
+                q_apiUpdate->bindValue(":date",q_requests->value(15).toDateTime());
+                q_apiUpdate->bindValue(":VCode",q_requests->value(6).toInt());
+                q_apiUpdate->exec();
+                break;
+            }
+            case 3:{//Запрос выдачи
+                q_apiUpdate->prepare("UPDATE [agzs].[dbo].[PR_APITransaction] set localState = :localState, DateClose = :date where VCode = :VCode");
+                q_apiUpdate->bindValue(":localState",q_requests->value(10).toInt());
+                q_apiUpdate->bindValue(":date",q_requests->value(15).toDateTime());
+                q_apiUpdate->bindValue(":VCode",q_requests->value(6).toInt());
+                q_apiUpdate->exec();
+                break;
+            }
+            case 4:{//Выдача
+                q_apiUpdate->prepare("UPDATE [agzs].[dbo].[PR_APITransaction] set localState = :localState, DateClose = :date where VCode = :VCode");
+                q_apiUpdate->bindValue(":localState",q_requests->value(10).toInt());
+                q_apiUpdate->bindValue(":date",q_requests->value(15).toDateTime());
+                q_apiUpdate->bindValue(":VCode",q_requests->value(6).toInt());
+                q_apiUpdate->exec();
+                CityMobileAPI *api = new CityMobileAPI();
+                api->SetRequestStateFueling(a_api_key,q_requests->value(2).toString());
+                break;
+            }
+            case 5 ... 8 :{//Выдано //Подтверждение   Завершение выдачи //Обновление счетчиков //Завершение выдачи
+                QSqlQuery *q_PayOperation = new QSqlQuery(a_db);
+                q_PayOperation->exec("SELECT [AmountDB], [PriceDB], [VolumeDB] FROM [agzs].[dbo].[ARM_PayOperation] where Link="+q_requests->value(7).toString());
+                if(q_PayOperation->size()>0){
+                    q_apiUpdate->prepare("UPDATE [agzs].[dbo].[PR_APITransaction] set localState = :localState, [Price] = :price, ,[Litre] = :litre, [Sum] = :sum, [DateOpen] = :dateOpen, DateClose = :dateClose where VCode = :VCode");
+                    q_apiUpdate->bindValue(":localState",5);
+                    q_apiUpdate->bindValue(":price",q_requests->value(13).toInt());
+                    q_apiUpdate->bindValue(":litre",q_requests->value(12).toInt());
+                    q_apiUpdate->bindValue(":sum",q_requests->value(11).toInt());
+                    q_apiUpdate->bindValue(":dateOpen",q_requests->value(14).toDateTime());
+                    q_apiUpdate->bindValue(":dateClose",q_requests->value(15).toDateTime());
+                    q_apiUpdate->bindValue(":VCode",q_requests->value(6).toInt());
+                    q_apiUpdate->exec();
+                    CityMobileAPI *api = new CityMobileAPI();
+                    api->SetRequestStateCompleted(a_api_key,q_requests->value(2).toString(),q_requests->value(12).toDouble(),q_requests->value(6).toString(),q_requests->value(15).toDateTime());
+                }
+                delete q_PayOperation;
+                break;
+            }
+            default:{
+
+            }
+            }
+            delete q_apiUpdate;
+        }
+    }
 }
 
 void GetColumnsFuelsData(QJsonArray *a_fuels, QJsonObject *a_columns, QSqlDatabase a_db, QString a_vCodeAgzs){
@@ -476,7 +562,8 @@ void SetAZSData(QString a_api_key, QSqlDatabase a_db){
     QJsonDocument doc;
     doc.setArray(AGZSs);
     delete q;
-    CityMobileAPI::SetAZSData(a_api_key,doc);
+    CityMobileAPI *api = new CityMobileAPI();
+    api->SetAZSData(a_api_key,doc);
 }
 
 void SetPriceList(QString a_api_key, QSqlDatabase a_db){
@@ -528,7 +615,8 @@ void SetPriceList(QString a_api_key, QSqlDatabase a_db){
         }
     }
     delete q;
-    CityMobileAPI::SetPriceList(a_api_key,prices.join("&").replace(",","."));
+    CityMobileAPI *api = new CityMobileAPI();
+    api->SetPriceList(a_api_key,prices.join("&").replace(",","."));
 }
 
 void GetRequests(QString a_api_key, QSqlDatabase a_db){
@@ -555,14 +643,14 @@ void GetRequests(QString a_api_key, QSqlDatabase a_db){
 //        ]
 //    }
 
-    CityMobileAPI api;
-    api.GetRequests(a_api_key);
-    QObject::connect(api,CityMobileAPI::s_finished(QNetworkReply *reply),[=](QNetworkReply *reply){
+    CityMobileAPI *api = new CityMobileAPI();
+    api->GetRequests(a_api_key);
+    QObject::connect(api,&CityMobileAPI::s_finished,[=](QNetworkReply *reply){
         QJsonArray orders=QJsonDocument::fromJson(reply->readAll()).object().value("Orders").toArray();
         for(auto order: orders){
             InsertNewRequest(a_api_key,order.toObject(),a_db);
         }
-    }));
+    });
 }
 
 int main(int argc, char *argv[]){
