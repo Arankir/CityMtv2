@@ -4,7 +4,8 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QtSql>
-#include <qeventloop.h>
+#include <QTimer>
+#include <QEventLoop>
 
 int GetFuelID(QString a_fuelIdAPI){
     if(a_fuelIdAPI=="diesel")
@@ -535,6 +536,7 @@ void SetAZSData(QString a_api_key, QSqlDatabase a_db){
 //        }
 //        ]
 //    }
+    qDebug()<<1;
     QJsonArray AGZSs;
     QSqlQuery* q = new QSqlQuery(a_db);
     if (q->exec("SELECT AGZSName, AGZS, VCode, Id, Adress, Location_x, Location_y, ColumnsCount, AGZSL, AGZSP FROM [agzs].[dbo].PR_AGZSData where AGZS=(SELECT TOP 1 AGZS FROM [agzs].[dbo].[Identification])")) {
@@ -568,6 +570,7 @@ void SetAZSData(QString a_api_key, QSqlDatabase a_db){
 
 void SetPriceList(QString a_api_key, QSqlDatabase a_db){
 //    key1=value1&key2=value2&...
+    qDebug()<<2;
     QStringList prices;
     QSqlQuery* q = new QSqlQuery(a_db);
     if (q->exec("SELECT AGZSName,Id,VCode,ColumnsCount,[diesel_price],[diesel_premium_price],[a80_price],[a92_price],[a92_premium_price],[a95_price],[a95_premium_price]"
@@ -643,14 +646,20 @@ void GetRequests(QString a_api_key, QSqlDatabase a_db){
 //        ]
 //    }
 
+    qDebug()<<3;
     CityMobileAPI *api = new CityMobileAPI();
     api->GetRequests(a_api_key);
     QObject::connect(api,&CityMobileAPI::s_finished,[=](QNetworkReply *reply){
         QJsonArray orders=QJsonDocument::fromJson(reply->readAll()).object().value("Orders").toArray();
         for(auto order: orders){
-            InsertNewRequest(a_api_key,order.toObject(),a_db);
+            QSqlQuery *q_requests = new QSqlQuery(a_db);
+            q_requests->exec("SELECT APIID FROM [agzs].[dbo].[PR_APITransaction] where APIID='"+order.toObject().value("Id").toString()+"'");
+            if(q_requests->size()==0)
+                InsertNewRequest(a_api_key,order.toObject(),a_db);
+            delete q_requests;
         }
     });
+    VerifyRequests(a_api_key, a_db);
 }
 
 int main(int argc, char *argv[]){
@@ -676,6 +685,16 @@ int main(int argc, char *argv[]){
     if(_db.open()){
 //        _manager = new QNetworkAccessManager;
         qDebug() << "db open";
+        QTimer timer;
+        QEventLoop loop;
+        QObject::connect(&timer, SIGNAL(timeout()), &loop, SLOT(quit()));
+        timer.start(10000);
+        while(true){
+            loop.exec();
+            SetAZSData(setting[1],_db);
+            SetPriceList(setting[1],_db);
+            GetRequests(setting[1],_db);
+        }
 //        _timer.setInterval(60000);
 //        QObject::connect(&_timer,SIGNAL(timeout()),this,SLOT(SendFuel()));
 //        _timer.start();
