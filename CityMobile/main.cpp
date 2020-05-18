@@ -7,6 +7,35 @@
 #include <QTimer>
 #include <QEventLoop>
 
+QString GetFuelAPIName(QString a_fuelFullName){
+    if(a_fuelFullName=="Дизельное топливо")
+        return "diesel";
+//    if(a_fuelFullName=="diesel_premium")
+//        return "diesel_premium";
+//    if(a_fuelFullName=="a80")
+//        return "a80";
+    if(a_fuelFullName=="Бензин АИ-92")
+        return "a92";
+//    if(a_fuelFullName=="a92_premium")
+//        return "a92_premium";
+//    if(a_fuelFullName=="a95")
+//        return "a95";
+//    if(a_fuelFullName=="a95_premium")
+//        return "a95_premium";
+//    if(a_fuelFullName=="a98")
+//        return "a98";
+//    if(a_fuelFullName=="a98_premium")
+//        return "a98_premium";
+//    if(a_fuelFullName=="a100")
+//        return "a100";
+//    if(a_fuelFullName=="a100_premium")
+//        return "a100_premium";
+    if(a_fuelFullName=="Сжиженный газ")
+        return "propane";
+//    if(a_fuelFullName=="metan")
+//        return "metan";
+    return 0;
+}
 int GetFuelID(QString a_fuelIdAPI){
     if(a_fuelIdAPI=="diesel")
         return 32;
@@ -354,147 +383,35 @@ void VerifyRequests(QString a_api_key, QSqlDatabase a_db){
     }
 }
 
-void GetColumnsFuelsData(QJsonArray *a_fuels, QJsonObject *a_columns, QSqlDatabase a_db, QString a_vCodeAgzs){
-    bool FuelsInc[13]={0,0,0,0,0,0,0,0,0,0,0,0,0};
+void GetColumnsFuelsData(QJsonArray &a_fuels, QJsonObject &a_columns, QSqlDatabase a_db, QString a_vCodeAgzs){
     QSqlQuery* q2 = new QSqlQuery(a_db);
-    q2->exec("SELECT d.AGZSName, d.VCode, c.ColumnNumber, c.diesel, c.diesel_premium, c.a80, c.a92, c.a92_premium, c.a95, c.a95_premium, c.a98, c.a98_premium, "
-             "c.a100, c.a100_premium, c.propane, c.metan, c.TrkVCode, c.SideAdress "
-             "FROM [agzs].[dbo].[PR_AGZSColumnsData] c INNER JOIN [agzs].[dbo].PR_AGZSData d ON d.VCode = c.Link WHERE (((d.VCode)="+a_vCodeAgzs+")) order by c.ColumnNumber asc");
+    q2->exec("SELECT d.AGZSName, d.VCode, c.FuelName, c.TrkVCode, c.SideAdress "
+             "FROM [agzs].[dbo].[PR_AGZSColumnsData] c INNER JOIN [agzs].[dbo].PR_AGZSData d ON d.VCode = c.Link WHERE (((d.VCode)="+a_vCodeAgzs+")) order by c.TrkVCode, c.SideAdress asc");
     while (q2->next()) {
-        QJsonObject Column;
-        QJsonArray Fuels;
-        if(q2->value(3).toInt()>0){
-            Fuels.append("diesel");
-            if(!FuelsInc[0]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="diesel";
-                FuelName["FuelName"]="ДТ";
-                a_fuels->append(FuelName);
-                FuelsInc[0]=true;
+        QString fuelAPIName=GetFuelAPIName(q2->value(2).toString());
+        QJsonObject fuel;
+        fuel["Fuel"]=fuelAPIName;
+        fuel["FuelName"]=q2->value(2).toString();
+        bool insert=std::move(true);
+        for(auto fuelN: a_fuels){
+            if(fuelN.toObject().value("Fuel")==fuel.value("Fuel")){
+                insert=std::move(false);
+                break;
             }
         }
-        if(q2->value(4).toInt()>0){
-            Fuels.append("diesel_premium");
-            if(!FuelsInc[1]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="diesel_premium";
-                FuelName["FuelName"]="ДТ Премиум";
-                a_fuels->append(FuelName);
-                FuelsInc[1]=true;
-            }
+        if(insert){
+            a_fuels.append(std::move(fuel));
         }
-        if(q2->value(5).toInt()>0){
-            Fuels.append("a80");
-            if(!FuelsInc[2]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="a80";
-                FuelName["FuelName"]="АИ-80";
-                a_fuels->append(FuelName);
-                FuelsInc[2]=true;
-            }
+        QString columnNumber = QString::number(q2->value(4).toInt()*1000+q2->value(3).toInt());
+        if(a_columns.value(columnNumber).toString()==""){
+            QJsonObject column;
+            column["Fuels"]=std::move(QJsonArray());
+            a_columns[columnNumber]=column;
+            qDebug()<<fuelAPIName;
         }
-        if(q2->value(6).toInt()>0){
-            Fuels.append("a92");
-            if(!FuelsInc[3]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="a92";
-                FuelName["FuelName"]="АИ-92";
-                a_fuels->append(FuelName);
-                FuelsInc[3]=true;
-            }
-        }
-        if(q2->value(7).toInt()>0){
-            Fuels.append("a92_premium");
-            if(!FuelsInc[4]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="a92_premium";
-                FuelName["FuelName"]="АИ-92 Премиум";
-                a_fuels->append(FuelName);
-                FuelsInc[4]=true;
-            }
-        }
-        if(q2->value(8).toInt()>0){
-            Fuels.append("a95");
-            if(!FuelsInc[5]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="a95";
-                FuelName["FuelName"]="АИ-95";
-                a_fuels->append(FuelName);
-                FuelsInc[5]=true;
-            }
-        }
-        if(q2->value(9).toInt()>0){
-            Fuels.append("a95_premium");
-            if(!FuelsInc[6]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="a95_premium";
-                FuelName["FuelName"]="АИ-95 Премиум";
-                a_fuels->append(FuelName);
-                FuelsInc[6]=true;
-            }
-        }
-        if(q2->value(10).toInt()>0){
-            Fuels.append("a98");
-            if(!FuelsInc[7]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="a98";
-                FuelName["FuelName"]="АИ-98";
-                a_fuels->append(FuelName);
-                FuelsInc[7]=true;
-            }
-        }
-        if(q2->value(11).toInt()>0){
-            Fuels.append("a98_premium");
-            if(!FuelsInc[8]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="a98_premium";
-                FuelName["FuelName"]="АИ-98 Премиум";
-                a_fuels->append(FuelName);
-                FuelsInc[8]=true;
-            }
-        }
-        if(q2->value(12).toInt()>0){
-            Fuels.append("a100");
-            if(!FuelsInc[9]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="a100";
-                FuelName["FuelName"]="АИ-100";
-                a_fuels->append(FuelName);
-                FuelsInc[9]=true;
-            }
-        }
-        if(q2->value(13).toInt()>0){
-            Fuels.append("a100_premium");
-            if(!FuelsInc[10]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="a100_premium";
-                FuelName["FuelName"]="АИ-100 Премиум";
-                a_fuels->append(FuelName);
-                FuelsInc[10]=true;
-            }
-        }
-        if(q2->value(14).toInt()>0){
-            Fuels.append("propane");
-            if(!FuelsInc[11]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="propane";
-                FuelName["FuelName"]="Сжиженный газ";
-                a_fuels->append(FuelName);
-                FuelsInc[11]=true;
-            }
-        }
-        if(q2->value(15).toInt()>0){
-            Fuels.append("metan");
-            if(!FuelsInc[12]){
-                QJsonObject FuelName;
-                FuelName["Fuel"]="metan";
-                FuelName["FuelName"]="Метан";
-                a_fuels->append(FuelName);
-                FuelsInc[12]=true;
-            }
-        }
-        (*a_columns)[QString::number(q2->value(17).toInt()*1000+q2->value(16).toInt())]=Column;
+        a_columns.value(columnNumber).toObject().value("Fuels").toArray().append(fuelAPIName);//Ошибка
     }
+    qDebug()<<a_columns<<a_fuels;
     delete q2;
 }
 
@@ -536,7 +453,6 @@ void SetAZSData(QString a_api_key, QSqlDatabase a_db){
 //        }
 //        ]
 //    }
-    qDebug()<<1;
     QJsonArray AGZSs;
     QSqlQuery* q = new QSqlQuery(a_db);
     if (q->exec("SELECT AGZSName, AGZS, VCode, Id, Adress, Location_x, Location_y, ColumnsCount, AGZSL, AGZSP FROM [agzs].[dbo].PR_AGZSData where AGZS=(SELECT TOP 1 AGZS FROM [agzs].[dbo].[Identification])")) {
@@ -546,6 +462,7 @@ void SetAZSData(QString a_api_key, QSqlDatabase a_db){
             AGZS["Enable"] = true;
             AGZS["Name"] = q->value(0).toString();
             AGZS["Adress"] = q->value(4).toString();
+
             QJsonObject Location;
             Location["Lon"] = q->value(6).toString().replace(",",".");
             Location["Lat"] = q->value(5).toString().replace(",",".");
@@ -554,7 +471,7 @@ void SetAZSData(QString a_api_key, QSqlDatabase a_db){
             QJsonObject Columns;
             //FuelNames
             QJsonArray FuelNames;
-            GetColumnsFuelsData(&FuelNames, &Columns, a_db, q->value(2).toString());
+            GetColumnsFuelsData(FuelNames, Columns, a_db, q->value(2).toString());
 
             AGZS["Columns"]=Columns;
             AGZS["FuelNames"]=FuelNames;
@@ -570,7 +487,6 @@ void SetAZSData(QString a_api_key, QSqlDatabase a_db){
 
 void SetPriceList(QString a_api_key, QSqlDatabase a_db){
 //    key1=value1&key2=value2&...
-    qDebug()<<2;
     QStringList prices;
     QSqlQuery* q = new QSqlQuery(a_db);
     if (q->exec("SELECT AGZSName,Id,VCode,ColumnsCount,[diesel_price],[diesel_premium_price],[a80_price],[a92_price],[a92_premium_price],[a95_price],[a95_premium_price]"
@@ -646,7 +562,6 @@ void GetRequests(QString a_api_key, QSqlDatabase a_db){
 //        ]
 //    }
 
-    qDebug()<<3;
     CityMobileAPI *api = new CityMobileAPI();
     api->GetRequests(a_api_key);
     QObject::connect(api,&CityMobileAPI::s_finished,[=](QNetworkReply *reply){

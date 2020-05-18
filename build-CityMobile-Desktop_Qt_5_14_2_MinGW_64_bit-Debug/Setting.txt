@@ -1,8 +1,2 @@
-grimnir
-agzs
-sa
-Gfhf743Djpbr
-Region.agzs00
-gfyfvrf743
-smtp.gmail.com
-Region.agzs00@gmail.com
+deb_agzs
+740dd66a1bd5930442bed5ae23ecfb65
