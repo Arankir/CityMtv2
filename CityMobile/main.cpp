@@ -6,7 +6,17 @@
 #include <QtSql>
 #include <QTimer>
 #include <QEventLoop>
+#include <QTextCodec>
 
+QString ToUTF8(QString a_text){
+    QByteArray ba = a_text.toUtf8();
+    QTextCodec *codec_1251 = QTextCodec::codecForName("Windows-1251");
+    QString string = codec_1251->toUnicode(ba);
+
+    QTextCodec *codec_utf8 = QTextCodec::codecForName("UTF-8");
+    QByteArray encodedString_utf8 = codec_utf8->fromUnicode(string);
+    return QString(encodedString_utf8);
+}
 QString GetFuelAPIName(QString a_fuelFullName){
     if(a_fuelFullName=="Дизельное топливо")
         return "diesel";
@@ -407,11 +417,13 @@ void GetColumnsFuelsData(QJsonArray &a_fuels, QJsonObject &a_columns, QSqlDataba
             QJsonObject column;
             column["Fuels"]=std::move(QJsonArray());
             a_columns[columnNumber]=column;
-            qDebug()<<fuelAPIName;
         }
-        a_columns.value(columnNumber).toObject().value("Fuels").toArray().append(fuelAPIName);//Ошибка
+        QJsonObject value;
+        QJsonArray fuels = a_columns.value(columnNumber).toObject().value("Fuels").toArray();
+        fuels.append(fuelAPIName);
+        value["Fuels"]=fuels;
+        a_columns[columnNumber] = value;
     }
-    qDebug()<<a_columns<<a_fuels;
     delete q2;
 }
 
@@ -566,6 +578,7 @@ void GetRequests(QString a_api_key, QSqlDatabase a_db){
     api->GetRequests(a_api_key);
     QObject::connect(api,&CityMobileAPI::s_finished,[=](QNetworkReply *reply){
         QJsonArray orders=QJsonDocument::fromJson(reply->readAll()).object().value("Orders").toArray();
+        qDebug()<<"Requests"<<orders;
         for(auto order: orders){
             QSqlQuery *q_requests = new QSqlQuery(a_db);
             q_requests->exec("SELECT APIID FROM [agzs].[dbo].[PR_APITransaction] where APIID='"+order.toObject().value("Id").toString()+"'");
@@ -579,7 +592,7 @@ void GetRequests(QString a_api_key, QSqlDatabase a_db){
 
 int main(int argc, char *argv[]){
     QCoreApplication a(argc, argv);
-
+    setlocale(LC_ALL, "");
     QSqlDatabase _db = QSqlDatabase::addDatabase("QODBC3");
     QStringList setting;
     if(QFile::exists("Setting.txt")){

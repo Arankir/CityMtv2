@@ -7,7 +7,7 @@ CityMobileAPI::~CityMobileAPI(){
 }
 
 void CityMobileAPI::SetAZSData(QString a_api_key, QJsonDocument a_post){
-    qDebug()<<"Data"<<a_api_key<<a_post;
+    qDebug()<<"Data"<<a_post;
     QNetworkRequest request;
     request.setUrl(QUrl(c_baseUrl+"api/station"));
     request.setRawHeader("Authorization",a_api_key.toUtf8());
@@ -16,7 +16,7 @@ void CityMobileAPI::SetAZSData(QString a_api_key, QJsonDocument a_post){
 }
 
 void CityMobileAPI::SetPriceList(QString a_api_key, QString a_post){
-    qDebug()<<"Price"<<a_api_key<<a_post;
+    qDebug()<<"Price"<<a_post;
     QNetworkRequest request;
     request.setUrl(QUrl(c_baseUrl+"api/price"));
     request.setRawHeader("Authorization",a_api_key.toUtf8());
@@ -25,7 +25,6 @@ void CityMobileAPI::SetPriceList(QString a_api_key, QString a_post){
 }
 
 void CityMobileAPI::GetRequests(QString a_api_key){
-    qDebug()<<"Request"<<a_api_key;
     QNetworkRequest request;
     request.setUrl(QUrl(c_baseUrl+"api/orders/items"));
     request.setRawHeader("Authorization",a_api_key.toUtf8());
