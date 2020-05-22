@@ -8,15 +8,6 @@
 #include <QEventLoop>
 #include <QTextCodec>
 
-QString ToUTF8(QString a_text){
-    QByteArray ba = a_text.toUtf8();
-    QTextCodec *codec_1251 = QTextCodec::codecForName("Windows-1251");
-    QString string = codec_1251->toUnicode(ba);
-
-    QTextCodec *codec_utf8 = QTextCodec::codecForName("UTF-8");
-    QByteArray encodedString_utf8 = codec_utf8->fromUnicode(string);
-    return QString(encodedString_utf8);
-}
 QString GetFuelAPIName(QString a_fuelFullName){
     if(a_fuelFullName=="Дизельное топливо")
         return "diesel";
@@ -140,25 +131,25 @@ int GetLastAPI(QSqlDatabase a_db){
     delete q_APIRequestsLast;
     return last;
 }
-void MoneyData(QJsonObject a_data, int *a_requestTotalPriceDB, int *a_requestVolumeDB, int *a_requestUnitPriceDB, int *a_moneyTakenDB, int *a_fullTankDB){
+void MoneyData(QJsonObject a_data, int &a_requestTotalPriceDB, int &a_requestVolumeDB, int &a_requestUnitPriceDB, int &a_moneyTakenDB, int &a_fullTankDB){
     if(a_data.value("OrderType").toString()=="Money"){
-        *a_requestTotalPriceDB=a_data.value("OrderVolume").toString().toInt();
-        *a_requestUnitPriceDB=a_data.value("PriceFuel").toString().toInt();
-        *a_requestVolumeDB=*a_requestTotalPriceDB / *a_requestUnitPriceDB;
-        *a_moneyTakenDB=a_data.value("OrderVolume").toString().toInt();
-        *a_fullTankDB=0;
+        a_requestTotalPriceDB=a_data.value("OrderVolume").toString().toInt();
+        a_requestUnitPriceDB=a_data.value("PriceFuel").toString().toInt();
+        a_requestVolumeDB=a_requestTotalPriceDB / a_requestUnitPriceDB;
+        a_moneyTakenDB=a_data.value("OrderVolume").toString().toInt();
+        a_fullTankDB=0;
     } else if(a_data.value("OrderType").toString()=="Liters"){
-        *a_requestVolumeDB=a_data.value("OrderVolume").toString().toInt();
-        *a_requestUnitPriceDB=a_data.value("PriceFuel").toString().toInt();
-        *a_requestTotalPriceDB=*a_requestVolumeDB * *a_requestUnitPriceDB;
-        *a_moneyTakenDB=a_data.value("OrderVolume").toString().toInt();
-        *a_fullTankDB=0;
+        a_requestVolumeDB=a_data.value("OrderVolume").toString().toInt();
+        a_requestUnitPriceDB=a_data.value("PriceFuel").toString().toInt();
+        a_requestTotalPriceDB=a_requestVolumeDB * a_requestUnitPriceDB;
+        a_moneyTakenDB=a_data.value("OrderVolume").toString().toInt();
+        a_fullTankDB=0;
     } else if(a_data.value("OrderType").toString()=="FullTank"){
-        *a_requestTotalPriceDB=a_data.value("OrderVolume").toString().toInt();
-        *a_requestUnitPriceDB=a_data.value("PriceFuel").toString().toInt();
-        *a_requestVolumeDB=*a_requestTotalPriceDB / *a_requestUnitPriceDB;
-        *a_moneyTakenDB=a_data.value("OrderVolume").toString().toInt();
-        *a_fullTankDB=1;
+        a_requestTotalPriceDB=a_data.value("OrderVolume").toString().toInt();
+        a_requestUnitPriceDB=a_data.value("PriceFuel").toString().toInt();
+        a_requestVolumeDB=a_requestTotalPriceDB / a_requestUnitPriceDB;
+        a_moneyTakenDB=a_data.value("OrderVolume").toString().toInt();
+        a_fullTankDB=1;
     }
 }
 QString GetSmena(QSqlDatabase a_db){
@@ -204,7 +195,7 @@ void InsertNewRequest(QString a_api_key, QJsonObject a_request, QSqlDatabase a_d
     int transactionVCode=-1;
     if(error!=0){
         int requestTotalPriceDB=-1,	requestVolumeDB=-1,	requestUnitPriceDB=-1, moneyTakenDB=-1, fullTankDB=-1;
-        MoneyData(a_request, &requestTotalPriceDB, &requestVolumeDB, &requestUnitPriceDB, &moneyTakenDB, &fullTankDB);
+        MoneyData(a_request, requestTotalPriceDB, requestVolumeDB, requestUnitPriceDB, moneyTakenDB, fullTankDB);
         QSqlQuery *q_Transaction = new QSqlQuery(a_db);
         q_Transaction->exec("SELECT TOP 1 Value FROM [agzs].[dbo].[LxKeysOfCodes] where Key='ADAST_TRKTransaction'");
         q_Transaction->next();
@@ -311,6 +302,8 @@ void InsertNewRequest(QString a_api_key, QJsonObject a_request, QSqlDatabase a_d
     q_APIRequests->bindValue(":DateClose","DEFAULT");
     q_APIRequests->bindValue(":Link",transactionVCode);
     q_APIRequests->exec();
+    delete q_APIRequests;
+    delete q_AGZSColumn;
 }
 
 void VerifyRequests(QString a_api_key, QSqlDatabase a_db){
@@ -391,6 +384,7 @@ void VerifyRequests(QString a_api_key, QSqlDatabase a_db){
             delete q_apiUpdate;
         }
     }
+    delete q_requests;
 }
 
 void GetColumnsFuelsData(QJsonArray &a_fuels, QJsonObject &a_columns, QSqlDatabase a_db, QString a_vCodeAgzs){
@@ -612,7 +606,7 @@ int main(int argc, char *argv[]){
     //DB_.setPassword("1423");
     if(_db.open()){
 //        _manager = new QNetworkAccessManager;
-        qDebug() << "db open";
+        qDebug() << "db open"<<setting[1];
         QTimer timer;
         QEventLoop loop;
         QObject::connect(&timer, SIGNAL(timeout()), &loop, SLOT(quit()));

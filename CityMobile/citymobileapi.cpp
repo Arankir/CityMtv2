@@ -11,6 +11,7 @@ void CityMobileAPI::SetAZSData(QString a_api_key, QJsonDocument a_post){
     QNetworkRequest request;
     request.setUrl(QUrl(c_baseUrl+"api/station"));
     request.setRawHeader("Authorization",a_api_key.toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader,"application/json");
     _manager->post(request,QString(a_post.toJson(QJsonDocument::Compact)).toUtf8());
     this->deleteLater();
 }
