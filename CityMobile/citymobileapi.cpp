@@ -1,5 +1,5 @@
 #include "citymobileapi.h"
-const QString c_baseUrl="https://terminal.api.dev.fuelup.ru/"; //https://terminal.api.fuelup.ru/
+const QString c_baseUrl="https://terminal.api.test.fuelup.ru/"; //https://terminal.api.fuelup.ru/
 
 CityMobileAPI::CityMobileAPI(QString aBazeUrl, QString aApiKey, QSqlDatabase aDb, QObject *parent) : QObject(parent), _bazeUrl(aBazeUrl), _request(new RequestData()), _apiKey(aApiKey), _db(aDb) {
 

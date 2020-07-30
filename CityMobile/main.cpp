@@ -266,7 +266,7 @@ void SetAZSData(CityMobileAPI &aCityMobil, QSqlDatabase aDb) {
 //        }
 //        ]
 //    }
-    QJsonArray AGZSs;
+    QJsonObject AGZS;
     QSqlQuery* qAgzsData = new QSqlQuery(aDb);
     if (qAgzsData->exec("SELECT AGZSName, AGZS, VCode, Id, Adress, Location_x, Location_y, ColumnsCount, AGZSL, AGZSP "
                         "FROM [agzs].[dbo].PR_AGZSData "
@@ -274,7 +274,7 @@ void SetAZSData(CityMobileAPI &aCityMobil, QSqlDatabase aDb) {
                                     "SELECT TOP 1 AGZS "
                                     "FROM [agzs].[dbo].[Identification])")) {
         while (qAgzsData->next()) {
-            QJsonObject AGZS;
+            //QJsonObject AGZS;
             AGZS["StationExtendedId"] = qAgzsData->value(3).toString();
             AGZS["Enable"] = true;
             AGZS["Name"] = qAgzsData->value(0).toString();
@@ -292,11 +292,11 @@ void SetAZSData(CityMobileAPI &aCityMobil, QSqlDatabase aDb) {
 
             AGZS["Columns"] = Columns;
             AGZS["FuelNames"] = FuelNames;
-            AGZSs.append(AGZS);
+            //AGZSs.append(AGZS);
         }
     }
     QJsonDocument doc;
-    doc.setArray(AGZSs);
+    doc.setObject(AGZS);
     delete qAgzsData;
     aCityMobil.SetAZSData(doc);
 }

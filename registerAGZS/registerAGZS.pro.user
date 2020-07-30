@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.12.0, 2020-06-01T10:13:58. -->
+<!-- Written by QtCreator 4.12.1, 2020-07-30T10:41:53. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -84,7 +84,7 @@
     <value type="bool">true</value>
     <value type="int" key="EnableQmlDebugging">0</value>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">C:\Users\RUSLANoffice\Desktop\All\Projects\CityMtv2\build-registerAGZS-Desktop_Qt_5_15_0_MinGW_64_bit-Debug</value>
-    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory.shadowDir">C:\Users\RUSLANoffice\Desktop\All\Projects\CityMtv2\build-registerAGZS-Desktop_Qt_5_15_0_MinGW_64_bit-Debug</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory.shadowDir">C:/Users/RUSLANoffice/Desktop/All/Projects/CityMtv2/build-registerAGZS-Desktop_Qt_5_15_0_MinGW_64_bit-Debug</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
       <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
